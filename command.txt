@@ -1,0 +1,82 @@
+# ==============================================================================
+# CARA MENJALANKAN APACHE KAFKA DI PODMAN
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# METODE 1: MENGGUNAKAN PODMAN COMPOSE (Rekomendasi untuk docker-compose.yml)
+# ------------------------------------------------------------------------------
+# 1. Jalankan semua service (Kafka + Kafka UI):
+podman compose up -d
+# (atau jika menggunakan podman-compose: podman-compose up -d)
+
+# 2. Buka dashboard Kafka UI di browser:
+#    http://localhost:8080
+
+# 3. Cek log:
+podman compose logs -f
+
+# 4. Hentikan service:
+podman compose down
+
+
+# ------------------------------------------------------------------------------
+# METODE 2: MENGGUNAKAN PODMAN POD (Cara Native Podman - Sangat Stabil & Cepat)
+# ------------------------------------------------------------------------------
+# Podman memiliki fitur "Pod" di mana container berbagi network localhost bersama.
+
+# 1. Buat Pod dengan port forwarding untuk Kafka (9092) dan Web UI (8080):
+podman pod create --name kafka-pod -p 9092:9092 -p 8080:8080
+
+# 2. Jalankan container Kafka di dalam Pod:
+podman run -d --name kafka --pod kafka-pod docker.io/apache/kafka:latest
+
+# 3. Jalankan container Kafka UI di dalam Pod yang sama:
+podman run -d --name kafka-ui --pod kafka-pod \
+  -e DYNAMIC_CONFIG_ENABLED=true \
+  -e KAFKA_CLUSTERS_0_NAME=local-kafka \
+  -e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=localhost:9092 \
+  docker.io/provectuslabs/kafka-ui:latest
+
+# 4. Akses Kafka UI di: http://localhost:8080
+
+# 5. Menghentikan dan menghapus Pod:
+podman pod stop kafka-pod
+podman pod rm -f kafka-pod
+
+
+# ------------------------------------------------------------------------------
+# METODE 3: PODMAN RUN SINGLE CONTAINER (Hanya Kafka KRaft)
+# ------------------------------------------------------------------------------
+# 1. Jalankan container Kafka:
+podman run -d --name kafka -p 9092:9092 docker.io/apache/kafka:latest
+
+# 2. Cek status:
+podman ps
+
+# 3. Cek log:
+podman logs -f kafka
+
+# 4. Stop dan hapus:
+podman stop kafka
+podman rm kafka
+
+
+# ------------------------------------------------------------------------------
+# COMMAND UNTUK TESTING KAFKA DENGAN PODMAN (CLI)
+# ------------------------------------------------------------------------------
+
+# 1. Masuk ke dalam container:
+podman exec -it kafka /bin/bash
+
+# 2. Membuat Topic baru:
+podman exec -it kafka /opt/kafka/bin/kafka-topics.sh --create --topic test-topic --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+# 3. Melihat daftar Topic:
+podman exec -it kafka /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+
+# 4. Mengirim Pesan (Producer):
+#    (Ketik pesan lalu ENTER, Ctrl+C untuk keluar)
+podman exec -it kafka /opt/kafka/bin/kafka-console-producer.sh --topic test-topic --bootstrap-server localhost:9092
+
+# 5. Membaca Pesan (Consumer):
+podman exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --topic test-topic --from-beginning --bootstrap-server localhost:9092
