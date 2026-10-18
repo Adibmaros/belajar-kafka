@@ -80,3 +80,7 @@ podman exec -it kafka /opt/kafka/bin/kafka-console-producer.sh --topic test-topi
 
 # 5. Membaca Pesan (Consumer):
 podman exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --topic test-topic --from-beginning --bootstrap-server localhost:9092
+
+
+
+
